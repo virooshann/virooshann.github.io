@@ -105,7 +105,7 @@ main:focus { outline: none; }
 .brand:hover { text-decoration: none; }
 .brand__v { font-family: var(--font); font-weight: 700; font-size: 1.6rem; line-height: 1; letter-spacing: -0.04em; color: var(--text); transition: color .25s; }
 .brand:hover .brand__v { color: var(--cyan); }
-.brand__stage { color: var(--muted); font-size: .75rem; margin-left: 4px; }
+.brand__stage { color: var(--muted); font-family: var(--mono); font-size: .75rem; letter-spacing: .02em; margin-left: 6px; }
 
 .nav { display: flex; align-items: center; gap: 28px; }
 .nav ul { display: flex; gap: 24px; }
