@@ -272,7 +272,7 @@ async function init() {
   // ── Hero intro: particles assemble into the lens → scan sweep → the name label locks on ──
   if (!reduced) {
     // The name itself is never hidden (it is the page's largest paint); only its surroundings animate in.
-    gsap.from('.hero__tag, .hero__meta, .hero__cta', {
+    gsap.from('.hero__meta, .hero__cta', {
       opacity: 0, y: 18, duration: 0.9, stagger: 0.1, ease: 'power3.out', delay: 0.1,
     });
     if (scene) {

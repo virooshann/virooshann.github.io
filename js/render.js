@@ -37,7 +37,6 @@ function heroHTML() {
   <section id="hero" class="stage hero" ${stageAttrs('hero')} aria-labelledby="hero-name">
     <div class="wrap">
       <div class="hero__text">
-        <p class="hero__tag mono" aria-hidden="true"><span class="pulse-dot"></span>SUBJECT DETECTED · ID_001</p>
         <div class="label-box">
           <span class="corners" aria-hidden="true"></span>
           <h1 id="hero-name" class="hero__name">${esc(site.name)}</h1>
@@ -80,7 +79,6 @@ function aboutHTML() {
         <figure class="avatar" data-anim="card">
           <span class="corners" aria-hidden="true"></span>
           ${photo}
-          <figcaption class="avatar__tag mono" aria-hidden="true">ID_001 · VERIFIED</figcaption>
         </figure>
       </div>
     </div>
@@ -221,7 +219,7 @@ function contactHTML() {
 function topbarHTML() {
   const links = [['about', 'About'], ['projects', 'Projects'], ['experience', 'Experience'], ['skills', 'Skills'], ['contact', 'Contact']];
   return `
-    <a class="brand mono" href="#hero" data-scroll><span class="brand__mark" aria-hidden="true"></span>${esc(initials)}<span class="visually-hidden"> · ${esc(site.name)}, back to top</span><span class="brand__stage" id="brand-stage" aria-hidden="true"></span></a>
+    <a class="brand" href="#hero" data-scroll><span class="brand__v">V</span><span class="visually-hidden">${esc(site.name)}, back to top</span><span class="brand__stage" id="brand-stage" aria-hidden="true"></span></a>
     <button class="menu-btn mono" id="menu-btn" aria-expanded="false" aria-controls="nav">MENU</button>
     <nav class="nav" id="nav" aria-label="Main">
       <ul>${links.map(([id, l]) => `<li><a href="#${id}" data-scroll data-nav="${id}">${l}</a></li>`).join('')}</ul>

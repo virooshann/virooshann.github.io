@@ -2,7 +2,7 @@
 
 A 3D, scroll-driven portfolio at **https://virooshann.github.io**.
 
-The concept is **"Through the Lens"**: scrolling the page runs a computer-vision pipeline. A cloud of particles morphs from shape to shape (camera lens → constellation → multi-camera face → licence plate → regression plot → network graph → skill clusters → a single point). A HUD rail on the left tracks the pipeline stage.
+The concept is **"Through the Lens"**: scrolling the page runs a computer-vision pipeline. A cloud of particles morphs from shape to shape (atom → constellation → multi-camera face → licence plate → regression plot → network graph → skill clusters → a single point). A HUD rail on the left tracks the pipeline stage.
 
 ## Tech
 

@@ -7,13 +7,13 @@ const COLORS = { bg: 0x070b14, cyan: 0x3fe0ff, amber: 0xffb547, white: 0xeaf9ff 
 
 // Which shape each section shows
 const SCENE_SHAPE = {
-  hero: 'lens', about: 'constellation', attendance: 'face', plate: 'plate', predictor: 'scatter',
+  hero: 'atom', about: 'constellation', attendance: 'face', plate: 'plate', predictor: 'scatter',
   experience: 'network', skills: 'clusters', contact: 'point',
 };
 
 // Camera + object pose per section. `x` shifts the object to the right of the text column.
 const VIEWS_DESKTOP = {
-  hero:       { x: 2.1, y: 0.05, s: 1.0,  rx: -0.12, ry: -0.42, cy: 0.0, cz: 7.0, spin: 0 },
+  hero:       { x: 2.2, y: 0.05, s: 1.05, rx: 0.18,  ry: 0.0,   cy: 0.0, cz: 7.0, spin: 0.16 },
   about:      { x: 1.8, y: 0.0,  s: 1.0,  rx: 0.35,  ry: 0.0,   cy: 0.4, cz: 8.0, spin: 0.10 },
   attendance: { x: 2.2, y: -0.1, s: 0.92, rx: 0.08,  ry: -0.38, cy: 0.7, cz: 7.4, spin: 0 },
   plate:      { x: 2.25, y: 0.1, s: 0.62, rx: -0.12, ry: -0.3,  cy: 0.2, cz: 7.0, spin: 0 },
@@ -24,7 +24,7 @@ const VIEWS_DESKTOP = {
 };
 // On narrow screens the scene sits behind the content, centred and smaller.
 const VIEWS_MOBILE = {
-  hero:       { x: 0, y: 1.55, s: 0.55, rx: -0.12, ry: -0.42, cy: 0, cz: 7.4, spin: 0 },
+  hero:       { x: 0, y: 1.3,  s: 0.55, rx: 0.18,  ry: 0.0,   cy: 0, cz: 7.4, spin: 0.16 },
   about:      { x: 0, y: 0.3,  s: 0.7,  rx: 0.35,  ry: 0.0,   cy: 0, cz: 8.0, spin: 0.10 },
   attendance: { x: 0, y: 0.6,  s: 0.72, rx: 0.08,  ry: -0.3,  cy: 0, cz: 7.6, spin: 0 },
   plate:      { x: 0, y: 1.2,  s: 0.52, rx: -0.12, ry: -0.2,  cy: 0, cz: 7.0, spin: 0 },
@@ -120,44 +120,31 @@ function faceShape(N, R, mobile) {
   return out;
 }
 
-// Camera lens seen from the front: barrel rims, knurled grip, inner rings, a 7-blade iris and glass.
-function lensShape(N, R) {
+// Atom: a nucleus of clustered nucleons, three tilted elliptical orbits and an electron on each.
+function atomShape(N, R) {
   const out = new Float32Array(N * 3);
-  const TAU = Math.PI * 2, BLADES = 7, OPEN = 0.42, IRIS = 1.02;
-  const ring = (r, z, j = 0.008) => { const a = R() * TAU; return [Math.cos(a) * r + (R() - 0.5) * j, Math.sin(a) * r + (R() - 0.5) * j, z]; };
+  const TAU = Math.PI * 2, A = 1.75, B = 0.62, TILT = 0.45;
+  const orbits = [Math.PI / 2, Math.PI / 6, Math.PI * 5 / 6].map((phi, k) => ({ phi, e: [0.7, 2.6, 4.4][k] }));
+  // point on orbit k at angle t: ellipse in its own plane, tilted about its long axis, then turned about Z
+  const onOrbit = (o, t, j = 0) => {
+    const x = A * Math.cos(t), yl = B * Math.sin(t);
+    const y = yl * Math.cos(TILT), z = yl * Math.sin(TILT);
+    const c = Math.cos(o.phi), sn = Math.sin(o.phi);
+    return [x * c - y * sn + (R() - 0.5) * j, x * sn + y * c + (R() - 0.5) * j, z + (R() - 0.5) * j];
+  };
+  const nucleons = Array.from({ length: 14 }, () => {
+    const u = R() * 2 - 1, a = R() * TAU, r = 0.24 * Math.cbrt(R()), q = Math.sqrt(1 - u * u);
+    return [q * Math.cos(a) * r, u * r, q * Math.sin(a) * r];
+  });
+  const gauss = (sd) => (R() + R() + R() - 1.5) * sd;
   const parts = [
-    [0.12, () => ring(1.6, 0.35)],                         // front rim
-    [0.07, () => ring(1.48, 0.35)],
-    [0.15, () => {                                         // knurled grip: vertical ridges around the barrel
-      const a = Math.floor(R() * 96) / 96 * TAU, z = -0.55 + R() * 0.55;
-      return [Math.cos(a) * 1.63, Math.sin(a) * 1.63, z];
-    }],
-    [0.07, () => ring(1.63, -0.6)],                        // back rim
-    [0.07, () => ring(1.24, 0.22)],                        // inner element rings
-    [0.06, () => ring(IRIS, 0.08)],
-    [0.05, () => {                                         // engraved ticks on the front ring
-      const k = Math.floor(R() * 48), a = k / 48 * TAU, r = 1.3 + R() * (k % 4 ? 0.07 : 0.14);
-      return [Math.cos(a) * r, Math.sin(a) * r, 0.3];
-    }],
-    [0.2, () => {                                          // iris blade edges: from the opening, tangentially out to the iris ring
-      const a = Math.floor(R() * BLADES) / BLADES * TAU;
-      const v = [Math.cos(a) * OPEN, Math.sin(a) * OPEN];
-      const d = [Math.cos(a + 1.25), Math.sin(a + 1.25)];
-      const b = v[0] * d[0] + v[1] * d[1], L = -b + Math.sqrt(b * b - (OPEN * OPEN - IRIS * IRIS));
-      const t = R() * L;
-      return [v[0] + d[0] * t, v[1] + d[1] * t, 0.02];
-    }],
-    [0.08, () => {                                         // faint blade surface
-      const a = R() * TAU, r = OPEN + R() * (IRIS - OPEN);
-      return [Math.cos(a) * r, Math.sin(a) * r, 0];
-    }],
-    [0.06, () => {                                         // curved glass inside the opening
-      const a = R() * TAU, r = Math.sqrt(R()) * OPEN * 0.95;
-      return [Math.cos(a) * r, Math.sin(a) * r, 0.18 * (1 - (r / OPEN) ** 2)];
-    }],
-    [0.07, () => {                                         // reflection highlight across the front glass
-      const a = 2.0 + R() * 0.9, r = 0.72 + R() * 0.16;
-      return [Math.cos(a) * r, Math.sin(a) * r, 0.3];
+    [0.22, () => { const c = nucleons[Math.floor(R() * nucleons.length)]; return [c[0] + gauss(0.12), c[1] + gauss(0.12), c[2] + gauss(0.12)]; }],
+    [0.54, () => onOrbit(orbits[Math.floor(R() * 3)], R() * TAU, 0.03)],                       // orbit paths
+    [0.07, () => { const o = orbits[Math.floor(R() * 3)]; const p = onOrbit(o, o.e); return [p[0] + gauss(0.11), p[1] + gauss(0.11), p[2] + gauss(0.11)]; }], // electrons
+    [0.09, () => { const o = orbits[Math.floor(R() * 3)]; return onOrbit(o, o.e - 1.1 * R() * R(), 0.05); }],      // electron trails
+    [0.08, () => {                                                                                // faint field around it
+      const u = R() * 2 - 1, a = R() * TAU, r = 0.5 + 1.7 * Math.sqrt(R()), q = Math.sqrt(1 - u * u);
+      return [q * Math.cos(a) * r, u * r, q * Math.sin(a) * r * 0.6];
     }],
   ];
   const total = parts.reduce((sum, part) => sum + part[0], 0);
@@ -416,7 +403,7 @@ export async function createScene(canvas, { scenes, mobile, reduced, plateText =
   const network = networkShape(N, R, keyNodes, mobile);
   const clusters = clusterShape(N, R, skillCount);
   const shapes = {
-    lens: lensShape(N, R),
+    atom: atomShape(N, R),
     face: faceShape(N, R, mobile),
     constellation: constellationShape(N, R),
     plate: plateShape(N, R, plateText),
@@ -430,9 +417,9 @@ export async function createScene(canvas, { scenes, mobile, reduced, plateText =
   const seeds = new Float32Array(N);
   for (let i = 0; i < N; i++) seeds[i] = R();
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', attrs.lens); // required by three; real position comes from aFrom/aTo
-  geometry.setAttribute('aFrom', attrs.lens);
-  geometry.setAttribute('aTo', attrs.lens);
+  geometry.setAttribute('position', attrs.atom); // required by three; real position comes from aFrom/aTo
+  geometry.setAttribute('aFrom', attrs.atom);
+  geometry.setAttribute('aTo', attrs.atom);
   geometry.setAttribute('aNoise', new THREE.BufferAttribute(noiseShape(N, R), 3));
   geometry.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 1));
   geometry.setAttribute('aNet', new THREE.BufferAttribute(network.net, 1));
