@@ -57,13 +57,15 @@
   <canvas class="scene-canvas" id="scene" aria-hidden="true"></canvas>
   <div class="fx" aria-hidden="true"><div class="fx__grid"></div><div class="fx__lines"></div><div class="fx__vignette"></div></div>
 
-  <!-- Detection box that locks onto the 3D face (decorative, positioned by JS) -->
+  <!-- Detection box that locks onto the 3D face in the attendance scene (decorative, positioned by JS) -->
   <div class="lock" id="lock" aria-hidden="true">
     <span class="lock__c lock__c--tl"></span><span class="lock__c lock__c--tr"></span>
     <span class="lock__c lock__c--bl"></span><span class="lock__c lock__c--br"></span>
-    <span class="lock__scan"></span>
-    <span class="lock__label mono">FACE_01 · <span id="lock-conf">0.00</span></span>
+    <span class="lock__label mono">ID_001 · PRESENT</span>
   </div>
+
+  <!-- Liquid-glass scrollbar (desktop; native scrolling still works underneath) -->
+  <div class="glassbar" id="glassbar" aria-hidden="true"><div class="glassbar__thumb"></div></div>
 
   <header class="topbar" id="topbar"></header>
 
@@ -80,7 +82,7 @@
       <p>This site needs JavaScript for its full layout. You can reach me at
         <a href="mailto:virooshann@gmail.com">virooshann@gmail.com</a>, see my code on
         <a href="https://github.com/virooshann">GitHub</a>, or download my
-        <a href="assets/Virooshan_Naidu_Resume.pdf">résumé (PDF)</a>.</p>
+        <a href="assets/Virooshan_Naidu_Resume.pdf">resume (PDF)</a>.</p>
     </div>
   </noscript>
 </body>

@@ -14,7 +14,7 @@ const icon = {
   mail: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="1.5"/><path d="m3.5 6 8.5 7 8.5-7"/></svg>',
   linkedin: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 10v7M8 7v.01M12 17v-4a2 2 0 0 1 4 0v4M12 10v7"/></svg>',
   file: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7z"/><path d="M14 3v4h4M9 13h6M9 17h6"/></svg>',
-  arrow: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 17 17 7M8 7h9v9"/></svg>',
+  expand: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/></svg>',
 };
 
 const stageAttrs = (scene) => {
@@ -28,6 +28,9 @@ const eyebrow = (scene, text) => {
 const extLink = (href, label, ico, cls = 'btn') => (
   `<a class="${cls}" href="${esc(href)}" target="_blank" rel="noopener noreferrer">${icon[ico] || ''}<span>${esc(label)}</span></a>`
 );
+const resumeLink = (label = 'Resume', cls = 'btn') => (
+  `<a class="${cls}" href="${esc(site.resume)}" target="_blank" rel="noopener">${icon.file}<span>${label}</span></a>`
+);
 
 function heroHTML() {
   return `
@@ -35,7 +38,7 @@ function heroHTML() {
     <div class="wrap">
       <div class="hero__text">
         <p class="hero__tag mono" aria-hidden="true"><span class="pulse-dot"></span>SUBJECT DETECTED · ID_001</p>
-        <div class="label-box" data-anim="label">
+        <div class="label-box">
           <span class="corners" aria-hidden="true"></span>
           <h1 id="hero-name" class="hero__name">${esc(site.name)}</h1>
           <p class="hero__title">${esc(site.title)}</p>
@@ -43,7 +46,7 @@ function heroHTML() {
         <p class="hero__meta mono">${esc(site.location)}</p>
         <div class="hero__cta">
           <a class="btn btn--primary" href="#projects" data-scroll>View projects</a>
-          <a class="btn" href="${esc(site.resume)}" target="_blank" rel="noopener">${icon.file}<span>Résumé</span></a>
+          ${resumeLink()}
         </div>
       </div>
     </div>
@@ -53,8 +56,12 @@ function heroHTML() {
 
 function aboutHTML() {
   const photo = site.photo
-    ? `<img src="${esc(site.photo)}" alt="${esc(site.photoAlt)}" width="480" height="560" loading="lazy" decoding="async">`
+    ? `<img src="${esc(site.photo)}" alt="${esc(site.photoAlt)}" width="600" height="700" loading="lazy" decoding="async">`
     : `<div class="avatar__ph" role="img" aria-label="Profile photo placeholder"><span>${esc(initials)}</span><small class="mono">PHOTO · TODO</small></div>`;
+  const involvements = about.involvements.length
+    ? `<h3 class="sub-h">Leadership &amp; involvements</h3>
+       <ul class="involve">${about.involvements.map(([r, d]) => `<li><strong>${esc(r)}</strong> <span>${esc(d)}</span></li>`).join('')}</ul>`
+    : '';
   return `
   <section id="about" class="stage" ${stageAttrs('about')} aria-labelledby="about-h">
     <div class="wrap">
@@ -62,15 +69,18 @@ function aboutHTML() {
         <div class="panel card" data-anim="card">
           ${eyebrow('about', 'Who I am')}
           <h2 id="about-h">${esc(about.heading)}</h2>
-          <p class="lead">${esc(about.text)}</p>
+          ${about.paragraphs.map((p, i) => `<p class="${i ? '' : 'lead'}">${esc(p)}</p>`).join('')}
           <dl class="facts mono">
             <div><dt>Name</dt><dd>${esc(site.fullName)}</dd></div>
             <div><dt>Based in</dt><dd>${esc(site.location)}</dd></div>
+            <div><dt>Languages</dt><dd>${esc(about.languages)}</dd></div>
           </dl>
+          ${involvements}
         </div>
         <figure class="avatar" data-anim="card">
           <span class="corners" aria-hidden="true"></span>
           ${photo}
+          <figcaption class="avatar__tag mono" aria-hidden="true">ID_001 · VERIFIED</figcaption>
         </figure>
       </div>
     </div>
@@ -78,8 +88,16 @@ function aboutHTML() {
 }
 
 function mediaHTML(p) {
+  if (p.demo === null) return '';
   if (p.demo) {
-    return `<figure class="media"><img src="${esc(p.demo)}" alt="${esc(p.demoAlt)}" loading="lazy" decoding="async"></figure>`;
+    const [w, h] = p.demoSize || [];
+    const size = w && h ? ` width="${w}" height="${h}"` : '';
+    return `<figure class="media">
+        <a class="media__link" href="${esc(p.demo)}" target="_blank" rel="noopener" aria-label="Open full-size image: ${esc(p.demoAlt)}">
+          <img src="${esc(p.demo)}" alt="${esc(p.demoAlt)}"${size} loading="lazy" decoding="async">
+          <span class="media__zoom mono" aria-hidden="true">${icon.expand}VIEW</span>
+        </a>
+      </figure>`;
   }
   return `<figure class="media media--ph" role="img" aria-label="Demo coming soon">
       <span class="corners" aria-hidden="true"></span>
@@ -88,20 +106,20 @@ function mediaHTML(p) {
 }
 
 function readoutHTML(p) {
-  if (p.scene === 'plate') {
-    const chars = [...String(p.readout || '')].map((c) => `<span class="ch" data-final="${esc(c)}">${c === ' ' ? '&nbsp;' : '_'}</span>`).join('');
+  if (typeof p.readout === 'string') {
+    const chars = [...p.readout].map((c) => `<span class="ch" data-final="${esc(c)}">${c === ' ' ? '&nbsp;' : '_'}</span>`).join('');
     return `<div class="readout readout--plate mono" aria-hidden="true">
         <span class="readout__k">OCR ▸</span><span class="plate-chars">${chars}</span><span class="readout__s" data-ocr-status>SCANNING</span>
       </div>`;
   }
-  const cams = (p.readout || []).map((c) => `<span class="cam"><i></i>${esc(c)}</span>`).join('');
-  return `<div class="readout readout--cams mono" aria-hidden="true">${cams}<span class="readout__s" data-cam-status>SEARCHING</span></div>`;
+  const items = (p.readout || []).map((c) => `<span class="cam"><i></i>${esc(c)}</span>`).join('');
+  return `<div class="readout readout--items mono" aria-hidden="true" data-done="${esc(p.readoutDone || 'OK')}">${items}<span class="readout__s" data-items-status>SEARCHING</span></div>`;
 }
 
 function projectHTML(p, i) {
-  const repo = p.repo
-    ? extLink(p.repo, 'View repository', 'github')
-    : '<span class="btn btn--disabled" aria-disabled="true">Repository · coming soon</span>';
+  let repo = '';
+  if (p.repo) repo = extLink(p.repo, 'View on GitHub', 'github');
+  else if (p.repo === '') repo = '<span class="btn btn--disabled" aria-disabled="true">Repository · coming soon</span>';
   const highlights = p.highlights.length
     ? `<ul class="highlights">${p.highlights.map((h) => `<li>${esc(h)}</li>`).join('')}</ul>`
     : '';
@@ -117,7 +135,7 @@ function projectHTML(p, i) {
           <p>${esc(p.summary)}</p>
           ${highlights}
           ${mediaHTML(p)}
-          <div class="links">${repo}</div>
+          ${repo ? `<div class="links">${repo}</div>` : ''}
         </div>
       </div>
     </article>`;
@@ -133,11 +151,15 @@ function projectsHTML() {
 }
 
 function timelineItem(e, node, h = 'h3') {
+  const points = e.points?.length ? `<ul class="tl__points">${e.points.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>` : '';
+  const achievement = e.achievement ? `<p class="tl__key"><strong>Key achievement:</strong> ${esc(e.achievement)}</p>` : '';
+  const grade = e.grade ? ` <span class="tl__period mono">· ${esc(e.grade)}</span>` : '';
+  const modules = e.modules ? `<p class="tl__text"><span class="tl__label">Relevant modules:</span> ${esc(e.modules)}</p>` : '';
   return `<li class="tl__item" data-node="${node}">
       <span class="tl__node" aria-hidden="true"></span>
       <${h} class="tl__role">${esc(e.role)}</${h}>
-      <p class="tl__org">${esc(e.org)}${e.period ? ` <span class="tl__period mono">· ${esc(e.period)}</span>` : ''}</p>
-      ${e.text ? `<p class="tl__text">${esc(e.text)}</p>` : ''}
+      <p class="tl__org">${esc(e.org)}${e.period ? ` <span class="tl__period mono">· ${esc(e.period)}</span>` : ''}${grade}</p>
+      ${points}${achievement}${modules}
     </li>`;
 }
 
@@ -145,7 +167,7 @@ function experienceHTML() {
   return `
   <section id="experience" class="stage" ${stageAttrs('experience')} aria-labelledby="exp-h">
     <div class="wrap">
-      <div class="card panel" data-anim="card">
+      <div class="card panel panel--wide" data-anim="card">
         ${eyebrow('experience', 'Career path')}
         <h2 id="exp-h">Experience</h2>
         <ol class="tl">${experience.map((e, i) => timelineItem(e, i)).join('')}</ol>
@@ -183,13 +205,13 @@ function contactHTML() {
   <section id="contact" class="stage contact" ${stageAttrs('contact')} aria-labelledby="contact-h">
     <div class="wrap">
       <div class="contact__inner" data-anim="card">
-        <p class="match mono" aria-hidden="true">MATCH FOUND · CONF <span id="match-conf">0.99</span></p>
+        <p class="match mono" aria-hidden="true">MATCH FOUND</p>
         <h2 id="contact-h">${esc(contact.heading)}</h2>
         <a class="contact__email" href="mailto:${esc(site.email)}">${icon.mail}<span>${esc(site.email)}</span></a>
         <div class="contact__links">
           ${extLink(site.github, 'GitHub', 'github')}
           ${linkedin}
-          <a class="btn" href="${esc(site.resume)}" target="_blank" rel="noopener">${icon.file}<span>Résumé (PDF)</span></a>
+          ${resumeLink('Resume (PDF)')}
         </div>
       </div>
     </div>
@@ -203,7 +225,7 @@ function topbarHTML() {
     <button class="menu-btn mono" id="menu-btn" aria-expanded="false" aria-controls="nav">MENU</button>
     <nav class="nav" id="nav" aria-label="Main">
       <ul>${links.map(([id, l]) => `<li><a href="#${id}" data-scroll data-nav="${id}">${l}</a></li>`).join('')}</ul>
-      <a class="btn btn--small" href="${esc(site.resume)}" target="_blank" rel="noopener">${icon.file}<span>Résumé</span></a>
+      ${resumeLink('Resume', 'btn btn--small')}
     </nav>`;
 }
 
@@ -214,9 +236,7 @@ function railHTML(stageEls) {
   return `
     <p class="rail__title">PIPELINE</p>
     <ol class="rail__list">${items}</ol>
-    <div class="rail__meter"><span class="rail__bar" id="conf-bar"></span></div>
-    <p class="rail__conf">CONF <span id="conf-val">0.00</span></p>
-    <p class="rail__frm">FRM <span id="frm-val">000000</span></p>`;
+    <div class="rail__meter"><span class="rail__bar" id="progress-bar"></span></div>`;
 }
 
 export function render() {

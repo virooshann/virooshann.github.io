@@ -2,7 +2,7 @@
 
 A 3D, scroll-driven portfolio at **https://virooshann.github.io**.
 
-The concept is **"Through the Lens"**: scrolling the page runs a computer-vision pipeline on its owner. A cloud of particles morphs from shape to shape (face → constellation → multi-camera face → licence plate → network graph → skill clusters → a single point). A HUD rail on the left tracks the pipeline stage and a confidence meter that reaches `0.99 MATCH` at the contact section.
+The concept is **"Through the Lens"**: scrolling the page runs a computer-vision pipeline. A cloud of particles morphs from shape to shape (camera lens → constellation → multi-camera face → licence plate → regression plot → network graph → skill clusters → a single point). A HUD rail on the left tracks the pipeline stage.
 
 ## Tech
 
@@ -23,7 +23,7 @@ js/render.js        turns content.js into HTML
 js/main.js          scroll wiring, HUD, animations, fallbacks
 js/scene.js         Three.js scene, shapes, shaders
 assets/img/         photo, demo images, og-image.png
-assets/Virooshan_Naidu_Resume.pdf   placeholder résumé
+assets/Virooshan_Naidu_Resume.pdf   your resume
 favicon.svg
 ```
 
@@ -42,12 +42,14 @@ Then open http://localhost:8000. Alternatively, use the VS Code **Live Server** 
 
 Everything you'd normally change is in **`js/content.js`**:
 
-- **LinkedIn:** set `linkedin: 'https://www.linkedin.com/in/…'`. The button appears automatically.
-- **Profile photo:** save it as `assets/img/profile.jpg` (portrait, about 480×560), then set `photo: 'assets/img/profile.jpg'`.
-- **Project repo / demo:** fill in `repo: 'https://github.com/…'` and `demo: 'assets/img/attendance-demo.gif'` (save the file in `assets/img/`). Keep GIFs under about 3 MB, or use a short MP4 converted to GIF/WebP.
-- **Third project:** fill in the third entry in `projects` and set `enabled: true`.
-- **Résumé:** replace `assets/Virooshan_Naidu_Resume.pdf` with your real PDF, using the same file name.
-- **Share image:** replace `assets/img/og-image.png` (1200×630) if you want a custom one.
+- **LinkedIn:** set `linkedin: 'https://www.linkedin.com/in/...'`. The button appears automatically.
+- **Profile photo:** `assets/img/profile.jpg` (600x700). Replace the file to change it.
+- **Project links:** `repo` is a URL (button), `''` ("coming soon") or `null` (hidden). They point at the GitHub profile while the repos are private; swap in the repo URLs when they go public.
+- **Project images:** `demo` is an image path, `''` (placeholder) or `null` (hidden). Put images in `assets/img/` (WebP or JPG, under ~300 KB) and set `demoSize: [width, height]`.
+- **Adding a project:** copy an entry in `projects`. `scene` picks the 3D shape: `'attendance'`, `'plate'` or `'predictor'`.
+- **Skills:** add or remove groups freely; each group becomes one particle cluster.
+- **Resume:** replace `assets/Virooshan_Naidu_Resume.pdf`, keeping the same file name.
+- **Share image:** `assets/img/og-image.png` (1200x630).
 
 ## Accessibility and fallbacks
 

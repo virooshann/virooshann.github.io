@@ -7,26 +7,28 @@ const COLORS = { bg: 0x070b14, cyan: 0x3fe0ff, amber: 0xffb547, white: 0xeaf9ff 
 
 // Which shape each section shows
 const SCENE_SHAPE = {
-  hero: 'face', about: 'constellation', attendance: 'face', plate: 'plate',
+  hero: 'lens', about: 'constellation', attendance: 'face', plate: 'plate', predictor: 'scatter',
   experience: 'network', skills: 'clusters', contact: 'point',
 };
 
 // Camera + object pose per section. `x` shifts the object to the right of the text column.
 const VIEWS_DESKTOP = {
-  hero:       { x: 2.1, y: 0.05, s: 1.0,  rx: 0.0,   ry: 0.32,  cy: 0.0, cz: 7.0, spin: 0 },
+  hero:       { x: 2.1, y: 0.05, s: 1.0,  rx: -0.12, ry: -0.42, cy: 0.0, cz: 7.0, spin: 0 },
   about:      { x: 1.8, y: 0.0,  s: 1.0,  rx: 0.35,  ry: 0.0,   cy: 0.4, cz: 8.0, spin: 0.10 },
   attendance: { x: 2.2, y: -0.1, s: 0.92, rx: 0.08,  ry: -0.38, cy: 0.7, cz: 7.4, spin: 0 },
   plate:      { x: 2.25, y: 0.1, s: 0.62, rx: -0.12, ry: -0.3,  cy: 0.2, cz: 7.0, spin: 0 },
-  experience: { x: 2.1, y: 0.0,  s: 1.0,  rx: 0.1,   ry: 0.25,  cy: 0.0, cz: 7.2, spin: 0.05 },
-  skills:     { x: 2.15, y: 0.0, s: 0.82, rx: 0.32,  ry: 0.0,   cy: 0.5, cz: 7.6, spin: 0.22 },
+  predictor:  { x: 2.3, y: 0.0,  s: 0.82, rx: 0.22,  ry: -0.32, cy: 0.2, cz: 7.2, spin: 0 },
+  experience: { x: 2.7, y: 0.0,  s: 0.82, rx: 0.1,   ry: 0.25,  cy: 0.0, cz: 7.2, spin: 0.05 },
+  skills:     { x: 2.75, y: 0.0, s: 0.66, rx: 0.32,  ry: 0.0,   cy: 0.5, cz: 7.6, spin: 0.22 },
   contact:    { x: 0.0, y: 1.75, s: 1.0,  rx: 0.0,   ry: 0.0,   cy: 0.0, cz: 7.0, spin: 0 },
 };
 // On narrow screens the scene sits behind the content, centred and smaller.
 const VIEWS_MOBILE = {
-  hero:       { x: 0, y: 1.55, s: 0.52, rx: 0.0,   ry: 0.25,  cy: 0, cz: 7.4, spin: 0 },
+  hero:       { x: 0, y: 1.55, s: 0.55, rx: -0.12, ry: -0.42, cy: 0, cz: 7.4, spin: 0 },
   about:      { x: 0, y: 0.3,  s: 0.7,  rx: 0.35,  ry: 0.0,   cy: 0, cz: 8.0, spin: 0.10 },
   attendance: { x: 0, y: 0.6,  s: 0.72, rx: 0.08,  ry: -0.3,  cy: 0, cz: 7.6, spin: 0 },
   plate:      { x: 0, y: 1.2,  s: 0.52, rx: -0.12, ry: -0.2,  cy: 0, cz: 7.0, spin: 0 },
+  predictor:  { x: 0, y: 0.6,  s: 0.7,  rx: 0.12,  ry: -0.5,  cy: 0, cz: 7.4, spin: 0 },
   experience: { x: 0, y: 0.3,  s: 0.75, rx: 0.1,   ry: 0.25,  cy: 0, cz: 7.4, spin: 0.05 },
   skills:     { x: 0, y: 0.3,  s: 0.7,  rx: 0.32,  ry: 0.0,   cy: 0, cz: 7.8, spin: 0.22 },
   contact:    { x: 0, y: 1.9,  s: 0.9,  rx: 0.0,   ry: 0.0,   cy: 0, cz: 7.0, spin: 0 },
@@ -114,6 +116,80 @@ function faceShape(N, R, mobile) {
       y = (R() * 2 - 1) * FACE_B * 0.98; x = (R() * 2 - 1) * faceHalfW(y);
     }
     out[i * 3] = x; out[i * 3 + 1] = y; out[i * 3 + 2] = faceZ(x, y) + lift;
+  }
+  return out;
+}
+
+// Camera lens seen from the front: barrel rims, knurled grip, inner rings, a 7-blade iris and glass.
+function lensShape(N, R) {
+  const out = new Float32Array(N * 3);
+  const TAU = Math.PI * 2, BLADES = 7, OPEN = 0.42, IRIS = 1.02;
+  const ring = (r, z, j = 0.008) => { const a = R() * TAU; return [Math.cos(a) * r + (R() - 0.5) * j, Math.sin(a) * r + (R() - 0.5) * j, z]; };
+  const parts = [
+    [0.12, () => ring(1.6, 0.35)],                         // front rim
+    [0.07, () => ring(1.48, 0.35)],
+    [0.15, () => {                                         // knurled grip: vertical ridges around the barrel
+      const a = Math.floor(R() * 96) / 96 * TAU, z = -0.55 + R() * 0.55;
+      return [Math.cos(a) * 1.63, Math.sin(a) * 1.63, z];
+    }],
+    [0.07, () => ring(1.63, -0.6)],                        // back rim
+    [0.07, () => ring(1.24, 0.22)],                        // inner element rings
+    [0.06, () => ring(IRIS, 0.08)],
+    [0.05, () => {                                         // engraved ticks on the front ring
+      const k = Math.floor(R() * 48), a = k / 48 * TAU, r = 1.3 + R() * (k % 4 ? 0.07 : 0.14);
+      return [Math.cos(a) * r, Math.sin(a) * r, 0.3];
+    }],
+    [0.2, () => {                                          // iris blade edges: from the opening, tangentially out to the iris ring
+      const a = Math.floor(R() * BLADES) / BLADES * TAU;
+      const v = [Math.cos(a) * OPEN, Math.sin(a) * OPEN];
+      const d = [Math.cos(a + 1.25), Math.sin(a + 1.25)];
+      const b = v[0] * d[0] + v[1] * d[1], L = -b + Math.sqrt(b * b - (OPEN * OPEN - IRIS * IRIS));
+      const t = R() * L;
+      return [v[0] + d[0] * t, v[1] + d[1] * t, 0.02];
+    }],
+    [0.08, () => {                                         // faint blade surface
+      const a = R() * TAU, r = OPEN + R() * (IRIS - OPEN);
+      return [Math.cos(a) * r, Math.sin(a) * r, 0];
+    }],
+    [0.06, () => {                                         // curved glass inside the opening
+      const a = R() * TAU, r = Math.sqrt(R()) * OPEN * 0.95;
+      return [Math.cos(a) * r, Math.sin(a) * r, 0.18 * (1 - (r / OPEN) ** 2)];
+    }],
+    [0.07, () => {                                         // reflection highlight across the front glass
+      const a = 2.0 + R() * 0.9, r = 0.72 + R() * 0.16;
+      return [Math.cos(a) * r, Math.sin(a) * r, 0.3];
+    }],
+  ];
+  const total = parts.reduce((sum, part) => sum + part[0], 0);
+  for (let i = 0; i < N; i++) {
+    let k = R() * total, fn = parts[0][1];
+    for (const [w, f] of parts) { if ((k -= w) <= 0) { fn = f; break; } }
+    const [x, y, z] = fn();
+    out[i * 3] = x; out[i * 3 + 1] = y; out[i * 3 + 2] = z;
+  }
+  return out;
+}
+
+// Regression plot: four model layers (front to back), each a scatter around its fitted line, plus axes.
+function scatterShape(N, R) {
+  const out = new Float32Array(N * 3);
+  const layers = [-0.75, -0.25, 0.25, 0.75], spread = [0.42, 0.3, 0.21, 0.14];
+  const gauss = () => (R() + R() + R() + R() - 2) * 0.87;
+  for (let i = 0; i < N; i++) {
+    const r = R();
+    let x, y, z;
+    if (r < 0.12) { // axes on the back layer
+      z = -0.95;
+      if (R() < 0.5) { x = -1.7 + R() * 3.4; y = -1.25; } else { x = -1.7; y = -1.25 + R() * 2.6; }
+      if (R() < 0.15) { x = -1.7 + Math.floor(R() * 9) / 8 * 3.4; y = -1.25 - R() * 0.08; }
+    } else {
+      const k = i % 4;
+      z = layers[k] + (R() - 0.5) * 0.03;
+      x = -1.5 + R() * 3.0;
+      const fit = x * 0.72;
+      y = r < 0.32 ? fit + (R() - 0.5) * 0.015 : fit + gauss() * spread[k];
+    }
+    out[i * 3] = x; out[i * 3 + 1] = y; out[i * 3 + 2] = z;
   }
   return out;
 }
@@ -222,24 +298,27 @@ function networkShape(N, R, keyNodes, mobile) {
   return { pos: out, net };
 }
 
-// Four clusters on a ring; rotating the group makes them orbit. Particle i belongs to cluster i % 4.
-function clusterShape(N, R) {
+// One cluster per skill group, spread over a sphere; rotating the group makes them orbit.
+// Particle i belongs to cluster i % K.
+function clusterShape(N, R, K) {
   const out = new Float32Array(N * 3);
   const skill = new Float32Array(N);
-  const centers = [0, 1, 2, 3].map((k) => {
-    const a = k * Math.PI / 2 + 0.4;
-    return [Math.cos(a) * 1.9, k % 2 ? -0.45 : 0.45, Math.sin(a) * 1.9];
+  const golden = Math.PI * (3 - Math.sqrt(5));
+  const centers = Array.from({ length: K }, (_, k) => {
+    const y = K > 1 ? 1 - (k / (K - 1)) * 2 : 0, r = Math.sqrt(1 - y * y), a = k * golden;
+    return [Math.cos(a) * r * 2.0, y * 1.5, Math.sin(a) * r * 2.0];
   });
+  const cr = Math.max(0.3, 0.55 * Math.sqrt(4 / K));
   for (let i = 0; i < N; i++) {
-    const k = i % 4, c = centers[k];
+    const k = i % K, c = centers[k];
     skill[i] = k;
     let x, y, z;
     if (R() < 0.78) {
-      const u = R() * 2 - 1, a = R() * 6.283, r = 0.55 * Math.cbrt(R());
+      const u = R() * 2 - 1, a = R() * 6.283, r = cr * Math.cbrt(R());
       const s = Math.sqrt(1 - u * u);
       x = s * Math.cos(a) * r; y = u * r; z = s * Math.sin(a) * r;
     } else {
-      const a = R() * 6.283, r = 0.85 + (R() - 0.5) * 0.04;
+      const a = R() * 6.283, r = cr * 1.55 + (R() - 0.5) * 0.03;
       x = Math.cos(a) * r; y = Math.sin(a) * r * 0.25; z = Math.sin(a) * r;
     }
     out[i * 3] = c[0] + x; out[i * 3 + 1] = c[1] + y; out[i * 3 + 2] = c[2] + z;
@@ -315,7 +394,7 @@ const fragmentShader = /* glsl */ `
   }`;
 
 // ───────────── scene ─────────────
-export async function createScene(canvas, { scenes, mobile, reduced, plateText = 'BVN 2026', keyNodes = 5, onContextLost }) {
+export async function createScene(canvas, { scenes, mobile, reduced, plateText = 'AKD 9878', keyNodes = 5, skillCount = 4, onContextLost }) {
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: false, alpha: false, powerPreference: 'high-performance' });
   renderer.setClearColor(COLORS.bg, 1);
   const dpr = Math.min(window.devicePixelRatio || 1, mobile ? 1.5 : 1.75);
@@ -335,11 +414,13 @@ export async function createScene(canvas, { scenes, mobile, reduced, plateText =
   try { await Promise.race([document.fonts.load('500 96px "JetBrains Mono"'), new Promise((r) => setTimeout(r, 1200))]); } catch { /* system font is fine */ }
 
   const network = networkShape(N, R, keyNodes, mobile);
-  const clusters = clusterShape(N, R);
+  const clusters = clusterShape(N, R, skillCount);
   const shapes = {
+    lens: lensShape(N, R),
     face: faceShape(N, R, mobile),
     constellation: constellationShape(N, R),
     plate: plateShape(N, R, plateText),
+    scatter: scatterShape(N, R),
     network: network.pos,
     clusters: clusters.pos,
     point: pointShape(N, R),
@@ -349,9 +430,9 @@ export async function createScene(canvas, { scenes, mobile, reduced, plateText =
   const seeds = new Float32Array(N);
   for (let i = 0; i < N; i++) seeds[i] = R();
   const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', attrs.face); // required by three; real position comes from aFrom/aTo
-  geometry.setAttribute('aFrom', attrs.face);
-  geometry.setAttribute('aTo', attrs.face);
+  geometry.setAttribute('position', attrs.lens); // required by three; real position comes from aFrom/aTo
+  geometry.setAttribute('aFrom', attrs.lens);
+  geometry.setAttribute('aTo', attrs.lens);
   geometry.setAttribute('aNoise', new THREE.BufferAttribute(noiseShape(N, R), 3));
   geometry.setAttribute('aSeed', new THREE.BufferAttribute(seeds, 1));
   geometry.setAttribute('aNet', new THREE.BufferAttribute(network.net, 1));

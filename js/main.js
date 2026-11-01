@@ -1,7 +1,7 @@
 // Entry point: renders the content, then progressively adds smooth scroll, animations and 3D.
 // If any library fails to load, the page stays a fully readable static site.
 import { render } from './render.js';
-import { projects } from './content.js';
+import { projects, skills } from './content.js';
 
 const root = document.documentElement;
 const stageEls = render();
@@ -12,6 +12,7 @@ const $ = (sel) => document.querySelector(sel);
 const smooth = (a, b, x) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 
 setupMenu();
+setupGlassScrollbar();
 
 function setupMenu() {
   const btn = $('#menu-btn'), nav = $('#nav');
@@ -21,6 +22,65 @@ function setupMenu() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && nav.classList.contains('is-open')) { set(false); btn.focus(); }
   });
+}
+
+// "Liquid glass" scrollbar: a frosted, refracting thumb drawn over the page (desktop mouse users only).
+// Touch devices keep their native overlay scrollbars.
+function setupGlassScrollbar() {
+  if (!matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+  const bar = document.getElementById('glassbar');
+  const thumb = bar.querySelector('.glassbar__thumb');
+  root.classList.add('has-glassbar');
+  let thumbH = 0, maxScroll = 1, track = 1, idle;
+
+  const measure = () => {
+    track = bar.clientHeight;
+    maxScroll = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+    thumbH = Math.max(56, track * (window.innerHeight / document.documentElement.scrollHeight));
+    thumb.style.height = `${thumbH}px`;
+    place();
+  };
+  const place = () => {
+    const y = (window.scrollY / maxScroll) * (track - thumbH);
+    thumb.style.transform = `translateY(${y.toFixed(1)}px)`;
+  };
+  const wake = () => {
+    bar.classList.add('is-active');
+    clearTimeout(idle);
+    idle = setTimeout(() => bar.classList.remove('is-active'), 900);
+  };
+  let ticking = false;
+  window.addEventListener('scroll', () => {
+    wake();
+    if (!ticking) { ticking = true; requestAnimationFrame(() => { place(); ticking = false; }); }
+  }, { passive: true });
+  window.addEventListener('resize', measure);
+  new ResizeObserver(measure).observe(document.body);
+
+  // drag the thumb
+  let dragY = 0, dragScroll = 0;
+  thumb.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    thumb.setPointerCapture(e.pointerId);
+    bar.classList.add('is-dragging');
+    dragY = e.clientY; dragScroll = window.scrollY;
+  });
+  thumb.addEventListener('pointermove', (e) => {
+    if (!thumb.hasPointerCapture(e.pointerId)) return;
+    const ratio = maxScroll / Math.max(1, track - thumbH);
+    window.scrollTo(0, dragScroll + (e.clientY - dragY) * ratio);
+  });
+  const endDrag = () => bar.classList.remove('is-dragging');
+  thumb.addEventListener('pointerup', endDrag);
+  thumb.addEventListener('pointercancel', endDrag);
+  // click the track to jump
+  bar.addEventListener('pointerdown', (e) => {
+    if (e.target !== bar) return;
+    const rect = bar.getBoundingClientRect();
+    const ratio = (e.clientY - rect.top - thumbH / 2) / Math.max(1, track - thumbH);
+    window.scrollTo({ top: Math.min(1, Math.max(0, ratio)) * maxScroll, behavior: reduced ? 'auto' : 'smooth' });
+  });
+  measure();
 }
 
 function hasWebGL() {
@@ -60,6 +120,7 @@ async function init() {
         reduced,
         plateText: projects.find((p) => p.enabled && p.scene === 'plate')?.readout,
         keyNodes: document.querySelectorAll('.tl__item').length,
+        skillCount: skills.length,
         onContextLost: () => { scene = null; root.classList.add('no-webgl'); },
       });
     } catch (err) {
@@ -104,7 +165,7 @@ async function init() {
   // ── HUD ──
   const railItems = [...document.querySelectorAll('.rail__list li')];
   const navLinks = [...document.querySelectorAll('[data-nav]')];
-  const confVal = $('#conf-val'), confBar = $('#conf-bar'), frmVal = $('#frm-val'), brandStage = $('#brand-stage');
+  const progressBar = $('#progress-bar'), brandStage = $('#brand-stage');
   const navFor = (scene) => ({ attendance: 'projects', plate: 'projects', hero: '' }[scene] ?? scene);
   let active = -1, dirty = true;
 
@@ -137,49 +198,41 @@ async function init() {
   };
   setActive(activeIndex());
 
-  let lastConf = -1;
-  function updateConf(s) {
-    const conf = 0.1 + 0.89 * (s / Math.max(1, stageEls.length - 1));
-    if (Math.abs(conf - lastConf) < 0.004) return;
-    lastConf = conf;
-    confVal.textContent = conf.toFixed(2);
-    confBar.style.transform = `scaleX(${conf.toFixed(3)})`;
-    confBar.classList.toggle('is-match', conf > 0.985);
+  // Pipeline progress bar under the stage list
+  let lastProgress = -1;
+  function updateProgress(s) {
+    const p = s / Math.max(1, stageEls.length - 1);
+    if (Math.abs(p - lastProgress) < 0.003) return;
+    lastProgress = p;
+    progressBar.style.transform = `scaleX(${Math.max(0.02, p).toFixed(3)})`;
+    progressBar.classList.toggle('is-match', p > 0.985);
   }
 
-  // ── Lock-on box over the face ──
-  const lock = $('#lock'), lockLabel = lock.querySelector('.lock__label'), lockScan = lock.querySelector('.lock__scan');
-  const lockState = { in: reduced ? 1 : 0, conf: reduced ? 0.97 : 0 };
-  let lockShown = false, lockMode = '';
-  if (reduced) lock.classList.add('is-locked');
+  // ── Lock-on box over the face in the attendance scene ──
+  const lock = $('#lock');
+  lock.classList.add('is-locked');
+  let lockShown = false;
 
   function updateLock(i, t) {
     const a = scenes[i], b = scenes[Math.min(i + 1, scenes.length - 1)];
-    const isFace = (s) => s === 'hero' || s === 'attendance';
+    const isFace = (s) => s === 'attendance';
     const w = (isFace(a) ? 1 - t : 0) + (isFace(b) ? t : 0);
-    const op = smooth(0.65, 1, w) * lockState.in;
+    const op = smooth(0.65, 1, w);
     if (op < 0.01) {
       if (lockShown) { lock.style.opacity = '0'; lockShown = false; }
       return;
     }
     lockShown = true;
     const r = scene.faceRect();
-    const grow = (1 - lockState.in) * 90;
-    const pad = 6 + grow;
+    const pad = 6;
     lock.style.opacity = op.toFixed(3);
     lock.style.transform = `translate(${(r.x - pad).toFixed(1)}px, ${(r.y - pad).toFixed(1)}px)`;
     lock.style.width = `${(r.w + pad * 2).toFixed(1)}px`;
     lock.style.height = `${(r.h + pad * 2).toFixed(1)}px`;
-    const mode = (t < 0.5 ? a : b) === 'attendance' ? 'att' : 'hero';
-    const label = mode === 'att' ? 'ID_001 · PRESENT' : `FACE_01 · CONF ${lockState.conf.toFixed(2)}`;
-    if (label !== lockMode) { lockLabel.textContent = label; lockMode = label; }
-    const sc = scene.state.heroScan;
-    lockScan.style.opacity = sc > 0 && sc < 1 ? '1' : '0';
-    if (sc > 0) lockScan.style.top = `${(sc * 100).toFixed(1)}%`;
   }
 
   // ── Render loop (paused when the tab is hidden or the canvas is off-screen) ──
-  let visible = !document.hidden, onScreen = true, frame = 0;
+  let visible = !document.hidden, onScreen = true;
   document.addEventListener('visibilitychange', () => { visible = !document.hidden; dirty = true; });
   new IntersectionObserver(([e]) => { onScreen = e.isIntersecting; }).observe(canvas);
 
@@ -202,7 +255,7 @@ async function init() {
   gsap.ticker.add((time, deltaMs) => {
     setActive(activeIndex());
     const s = reduced ? active : stageFloat();
-    updateConf(s);
+    updateProgress(s);
     if (!scene || !visible || !onScreen) return;
     if (reduced && !dirty) return;
     const i = Math.floor(s), t = smooth(0.15, 0.85, s - i);
@@ -213,27 +266,21 @@ async function init() {
     }
     scene.render(time, Math.min(deltaMs / 1000, 0.05));
     updateLock(reduced ? active : i, reduced ? 0 : t);
-    if (++frame % 6 === 0) frmVal.textContent = String(frame).padStart(6, '0');
     dirty = false;
   });
 
-  // ── Hero intro: particles assemble → scan sweep → brackets lock on ──
+  // ── Hero intro: particles assemble into the lens → scan sweep → the name label locks on ──
   if (!reduced) {
     // The name itself is never hidden (it is the page's largest paint); only its surroundings animate in.
     gsap.from('.hero__tag, .hero__meta, .hero__cta', {
       opacity: 0, y: 18, duration: 0.9, stagger: 0.1, ease: 'power3.out', delay: 0.1,
     });
     if (scene) {
-      const lockOn = () => {
-        lock.classList.add('is-locked');
-        $('.label-box')?.classList.add('is-locked');
-      };
+      const lockOn = () => $('.label-box')?.classList.add('is-locked');
       gsap.timeline({ delay: 0.25 })
         .to(scene.state, { assemble: 1, duration: 2.6, ease: 'power2.inOut' }, 0)
         .fromTo(scene.state, { heroScan: 0 }, { heroScan: 1, duration: 1.3, ease: 'power1.inOut' }, 1.6)
         .set(scene.state, { heroScan: -1 })
-        .to(lockState, { in: 1, duration: 0.8, ease: 'expo.out' }, 1.8)
-        .to(lockState, { conf: 0.97, duration: 1.2, ease: 'power2.out' }, 1.8)
         .call(lockOn, null, 2.9)
         .to(scene.state, { flash: 1, duration: 0.12 }, 2.9)
         .to(scene.state, { flash: 0, duration: 0.9, ease: 'power2.out' }, 3.02);
@@ -263,14 +310,14 @@ async function init() {
   }
 
   // ── Project HUD readouts ──
-  document.querySelectorAll('.readout--cams').forEach((ro) => {
-    const cams = [...ro.querySelectorAll('.cam')], status = ro.querySelector('[data-cam-status]');
+  document.querySelectorAll('.readout--items').forEach((ro) => {
+    const cams = [...ro.querySelectorAll('.cam')], status = ro.querySelector('[data-items-status]');
     ScrollTrigger.create({
       trigger: ro, start: 'top 80%', once: true,
       onEnter: () => {
         const tl = gsap.timeline();
         cams.forEach((c, k) => tl.call(() => c.classList.add('is-on'), null, reduced ? 0 : 0.2 + k * 0.45));
-        tl.call(() => { status.textContent = 'PRESENT'; status.classList.add('is-ok'); }, null, reduced ? 0 : 0.3 + cams.length * 0.45);
+        tl.call(() => { status.textContent = ro.dataset.done; status.classList.add('is-ok'); }, null, reduced ? 0 : 0.3 + cams.length * 0.45);
       },
     });
   });
