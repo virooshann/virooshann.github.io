@@ -187,4 +187,4 @@ export const contact = {
   heading: 'Get in touch',
 };
 
-export const footer = '© 2026 Virooshan Naidu · Built with Three.js and GSAP';
+export const footer = '© 2026 Virooshan Naidu';
